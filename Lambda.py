@@ -15,6 +15,40 @@ at some points.
 '''
 
 
+class LambdaBlock(nn.Module):
+    def __init__(self, dim, ksize=1, norm=nn.BatchNorm2d, act=nn.ReLU, skip=True, conv=False):
+        super(LambdaBlock, self).__init__()
+        if norm is None:
+            norm = nn.Identity
+        self.conv1 = nn.Conv2d(dim, dim, ksize, 1, padding=int(ksize // 2))
+        self.norm1 = norm(dim)
+        if conv:
+            self.lambda_layer = LambdaConv(dim)
+        else:
+            self.lambda_layer = LambdaLayer(dim)
+        self.conv2 = nn.Conv2d(dim, dim, ksize, 1, padding=int(ksize // 2))
+        self.norm2 = norm(dim)
+
+        self.act = act()
+        self.skip = skip
+
+    def forward(self, x):
+        res = x
+        x = self.conv1(x)
+        x = self.norm1(x)
+        x = self.act(x)
+
+        x = self.lambda_layer(x)
+
+        x = self.conv2(x)
+        x = self.norm2(x)
+        if self.skip:
+            x = x + res
+        x = self.act(x)
+
+        return x
+
+
 class LambdaLayer(nn.Module):
     def __init__(self, dim, dim_k=16, dim_u=1, heads=4, norm=nn.BatchNorm2d, ff_sigma=10):
         super(LambdaLayer, self).__init__()
